@@ -25,15 +25,9 @@ fn main() {
     // print decompressed string     
         println!("{}",decompressed);
 
-    // print compression stats
-        println!("input file size:  {}",contents.len());
-        println!("output file size: {}",compressed_bytes.len());
-        println!("compressed file size now {:.1}% of original", (compressed_bytes.len() as f64 / contents.len() as f64) * 100.0);
-
-    // display test results
-        if decompressed == contents {
-            println!("text is the same, test passed!");
-        }else{
-            println!("text is the different, test failed");
-        }
+    // print compression statistics
+        println!("=== Program Completion Stats ===");
+        println!("Input file size:  {}",contents.len());
+        println!("Output file size: {}",compressed_bytes.len());
+        println!("Compressed file size now {:.1}% of original", (compressed_bytes.len() as f64 / contents.len() as f64) * 100.0);
 }
