@@ -124,14 +124,14 @@ fn main() {
             let mut intermediate_compressed_bytes: Vec<Vec<u8>> = Vec::new();
             let mut compressed_bytes: Vec<u8> = Vec::new();
             for token in tokens {
-                if token.len() > 2 && is_valid_capitalization(token) && word_table.contains_key(token){
+                if token.len() > 2 && is_valid_capitalization(token) && word_table.contains_key(&token.to_lowercase()){
                     println!("compressing: {}",token);
 
                     // encode and store word
                         // bytes that store compressed word
                         // first bit is 1 to signify that this is a compressed word
                         let mut word_bytes: [u8; 3] = [0, 0, 0];
-                        let word_index = word_table[token].as_u64().unwrap();
+                        let word_index = word_table[&token.to_lowercase()].as_u64().unwrap();
 
                         println!("word_index: {}", word_index);
 
