@@ -184,6 +184,7 @@ fn main() {
         // compess tokens into bytes
             let mut intermediate_compressed_bytes: Vec<Vec<u8>> = Vec::new();
             let mut compressed_bytes: Vec<u8> = Vec::new();
+            let mut last_was_plaintext = false;
             for token in tokens {
                 if token.len() > 2 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
 
@@ -207,6 +208,14 @@ fn main() {
                         } else {
                             panic!("token \"{}\" slipped past is_valid_capitalization()", token);
                         }
+                    // store spacing
+                        if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' '{
+                            // erase last encoded space character
+                            compressed_bytes.pop();
+
+                            // encode last space in compressed word
+                            word_bytes[0] |= 16;
+                        }
 
                     // make first bit a 1
                     // signals the start of a compressed word
@@ -216,12 +225,14 @@ fn main() {
                         compressed_bytes.push(byte);
                     }
                     intermediate_compressed_bytes.push(vec![word_bytes[0],word_bytes[1],word_bytes[2]]);
+                    last_was_plaintext = false;
                 } else {
                     // append token to file as plaintext
                     for byte in token.bytes(){
                         compressed_bytes.push(byte);
                         intermediate_compressed_bytes.push(vec![byte])
                     }
+                    last_was_plaintext = true;
                 }
             }
 
