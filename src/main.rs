@@ -91,97 +91,31 @@ use std::collections::HashMap;
         decompressed_text
     }
 
-fn main() {
-
-    // prepair word_to_index
-        // retrieve words from json
-            let mut file = File::open("./english-words/words.txt").expect("Failed to open file");
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).expect("Failed to read to string");
-
-        // divide file by lines
-            let lines: Vec<&str> = contents.split('\n').collect();
-
-        // remove return character from strings
-            let mut fixed_lines: Vec<String> = Vec::new();
-            let carrage_return = 13 as char;
-            for line in lines{
-                fixed_lines.push(line.replace(carrage_return, ""));
-            }
-
-        // ensure lines are all lower case
-            for line in &mut fixed_lines{
-                line.make_ascii_lowercase();
-            }
-
-        // put words into word_to_index (for faster searching)
-            // create word_to_index table
-                let mut word_to_index: serde_json::Value = serde_json::from_str("{}").expect("JSON was not well-formatted");
-                let word_to_index = word_to_index.as_object_mut().unwrap();
-            // create index_to_word table
-                let mut index_to_word: HashMap<u32, String> = HashMap::new();
-
-
-            for (i, line) in fixed_lines.iter().enumerate() {
-                word_to_index.insert(line.to_string(), json!(i));
-                index_to_word.insert(i as u32, line.to_string());
-            }
-
-        println!("done pre-processing");
-
-    // compress
-
-        // retrieve string from file
-            let mut file = File::open("./input.txt").expect("Failed to open file");
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).expect("Failed to read to string");
-
+    fn compress(text: &str, word_to_index: HashMap<String, u32>) -> Option<Vec<u8>>{
         // crash if non ascii(< 127) character
-            for char in contents.chars() {
+            for char in text.chars() {
                 if char as u32 > 127 {
-                    panic!("Can't compress non ASCII character.")
+                    return None
                 }
             }
 
         // split strings to tokens (seperator is any character that's not alphanumeric, or '\'')
             let mut result = Vec::new();
             let mut last = 0;
-            for (index, matched) in contents.match_indices(|c: char| !(c.is_alphanumeric() || c == '\'')) {
+            for (index, matched) in text.match_indices(|c: char| !(c.is_alphanumeric() || c == '\'')) {
                 if last != index {
-                    result.push(&contents[last..index]);
+                    result.push(&text[last..index]);
                 }
                 result.push(matched);
                 last = index + matched.len();
             }
-            if last < contents.len() {
-                result.push(&contents[last..]);
+            if last < text.len() {
+                result.push(&text[last..]);
             }
 
             let tokens = result;
 
-        // turn string into tokens
-            // seperate by " "
-                // let current_tokens: Vec<&str> = contents.split([' ', '\n']).collect();
-            // re-add whitespace
-                // let mut next_tokens: Vec<&str> = Vec::new();
-                // for token in current_tokens{
-                //     if token.len() > 0 {
-                //         next_tokens.push(token);
-                //     }
-                //     next_tokens.push(" ");
-                // }
-                // next_tokens.pop();
-
-                // let tokens = next_tokens;
-
-
-        // test print tokens
-            // for x in 0..30{
-            //     println!("{}",tokens[x]);   
-            // }
-            
-                
-        // compess tokens into bytes
+        // compress
             let mut intermediate_compressed_bytes: Vec<Vec<u8>> = Vec::new();
             let mut compressed_bytes: Vec<u8> = Vec::new();
             let mut last_was_plaintext = false;
@@ -192,7 +126,7 @@ fn main() {
                         // bytes that store compressed word
                         // first bit is 1 to signify that this is a compressed word
                         let mut word_bytes: [u8; 3] = [0, 0, 0];
-                        let word_index = word_to_index[&token.to_lowercase()].as_u64().unwrap();
+                        let word_index = word_to_index[&token.to_lowercase()];
 
                         word_bytes[2] = word_index as u8;
                         word_bytes[1] = (word_index >> 8) as u8;
@@ -236,12 +170,63 @@ fn main() {
                 }
             }
 
-        // print compressed bytes
+        Some(compressed_bytes)
+    }
 
-            // println!("{:?}",intermediate_compressed_bytes);
+fn main() {
 
-            let decompressed = decompress(compressed_bytes, index_to_word);
-            println!("{}",decompressed);
+    // prepair word_to_index
+        // retrieve words from json
+            let mut file = File::open("./english-words/words.txt").expect("Failed to open file");
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).expect("Failed to read to string");
+
+        // divide file by lines
+            let lines: Vec<&str> = contents.split('\n').collect();
+
+        // remove return character from strings
+            let mut fixed_lines: Vec<String> = Vec::new();
+            let carrage_return = 13 as char;
+            for line in lines{
+                fixed_lines.push(line.replace(carrage_return, ""));
+            }
+
+        // ensure lines are all lower case
+            for line in &mut fixed_lines{
+                line.make_ascii_lowercase();
+            }
+
+        // put words into word_to_index (for faster searching)
+            // create word_to_index table
+                // let mut word_to_index: serde_json::Value = serde_json::from_str("{}").expect("JSON was not well-formatted");
+                // let word_to_index = word_to_index.as_object_mut().unwrap();
+
+                let mut word_to_index: HashMap<String, u32> = HashMap::new();
+            // create index_to_word table
+                let mut index_to_word: HashMap<u32, String> = HashMap::new();
+
+
+            for (i, line) in fixed_lines.iter().enumerate() {
+                word_to_index.insert(line.to_string(), i as u32);
+                index_to_word.insert(i as u32, line.to_string());
+            }
+
+        println!("done pre-processing");
+
+    // retrieve string from file
+        let mut file = File::open("./input.txt").expect("Failed to open file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Failed to read to string");
+            
+    // compess tokens into bytes
+        let compressed_bytes = compress(&contents, word_to_index).expect("Can't compress non ASCII character.");
+
+    // print compressed bytes
+
+        // println!("{:?}",intermediate_compressed_bytes);
+
+        let decompressed = decompress(compressed_bytes, index_to_word);
+        println!("{}",decompressed);
             
 
 }
