@@ -134,7 +134,7 @@ pub mod text_compressor{
                 index_to_word.insert(i as u32, line.to_string());
             }
 
-            return (word_to_index, index_to_word);
+            (word_to_index, index_to_word)
     }
 
 
@@ -158,7 +158,7 @@ pub mod text_compressor{
         false
     }
 
-    pub fn decompress(compressed_bytes: &Vec<u8>, index_to_word: HashMap<u32, String>) -> Option<String>{
+    pub fn decompress(compressed_bytes: &[u8], index_to_word: HashMap<u32, String>) -> Option<String>{
 
         let mut decompressed_text: String = String::new();
         let mut i = 0;
@@ -178,7 +178,7 @@ pub mod text_compressor{
                     // convert bytes to u32 number
                     let mut word_index: u32 = ((compressed_bytes[i] as u32) << 16) | ((compressed_bytes[i + 1] as u32) << 8) | compressed_bytes[i + 2] as u32;
                     // limit to 19 bits
-                    word_index = word_index & 0b000001111111111111111111;
+                    word_index &= 0b000001111111111111111111;
 
                 // build text
                     let mut word = index_to_word[&word_index].clone();
@@ -190,7 +190,7 @@ pub mod text_compressor{
                             word = word.to_uppercase();  
                         }else if capstate == 2{
                             // make first char uppercase
-                            let ch = word.chars().nth(0).unwrap();
+                            let ch = word.chars().next().unwrap();
                             let mut first_char = String::new();
                             first_char.push(ch);
 
@@ -264,9 +264,9 @@ pub mod text_compressor{
                         if token == token.to_lowercase(){
                             // bits are 00
                         } else if token == token.to_uppercase(){
-                            word_bytes[0] = word_bytes[0] | 0b00100000
+                            word_bytes[0] |= 0b00100000
                         } else if token[0..1] == token[0..1].to_uppercase() && token[1..] == token[1..].to_lowercase(){
-                            word_bytes[0] = word_bytes[0] | 0b01000000
+                            word_bytes[0] |= 0b01000000
                         } else {
                             panic!("token \"{}\" slipped past is_valid_capitalization()", token);
                         }
@@ -281,7 +281,7 @@ pub mod text_compressor{
 
                     // make first bit a 1
                     // signals the start of a compressed word
-                        word_bytes[0] = word_bytes[0] | 0b10000000;
+                        word_bytes[0] |= 0b10000000;
 
                     for byte in word_bytes {
                         compressed_bytes.push(byte);
