@@ -67,7 +67,7 @@ mod tests {
         // compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, word_to_index).expect("Can't compress non ASCII character.");
         // decompress compressed message
-            let decompressed = text_compressor::decompress(&compressed_bytes, index_to_word);
+            let decompressed = text_compressor::decompress(&compressed_bytes, index_to_word).unwrap();
         // ensure compression/decompression was lossless
             assert_eq!(text,decompressed);
     }
@@ -84,6 +84,14 @@ mod tests {
             let compressed_bytes = text_compressor::compress(&text, word_to_index);
         // ensure compression/decompression was lossless
             assert_eq!(compressed_bytes,None);
+    }
+    #[test]
+    fn catch_malformed_compressed(){
+        // generate english tables
+            let (_word_to_index, index_to_word) = text_compressor::generate_english_tables();
+        // decompress compressed message
+            let decompressed = text_compressor::decompress(&vec![228, 207, 101], index_to_word);
+        assert_eq!(decompressed,None);
     }
 }
 
@@ -150,7 +158,7 @@ pub mod text_compressor{
         false
     }
 
-    pub fn decompress(compressed_bytes: &Vec<u8>, index_to_word: HashMap<u32, String>) -> String{
+    pub fn decompress(compressed_bytes: &Vec<u8>, index_to_word: HashMap<u32, String>) -> Option<String>{
 
         let mut decompressed_text: String = String::new();
         let mut i = 0;
@@ -188,7 +196,7 @@ pub mod text_compressor{
 
                             word = first_char.to_uppercase() + &word[1..].to_lowercase();
                         }else{
-                            panic!("invalid capitalization state")
+                            return None
                         }
                     // append any spacing
                         let mut text = word;
@@ -208,7 +216,7 @@ pub mod text_compressor{
                 i += 1;
             }
         }
-        decompressed_text
+        Some(decompressed_text)
     }
 
     pub fn compress(text: &str, word_to_index: HashMap<String, u32>) -> Option<Vec<u8>>{
@@ -236,7 +244,7 @@ pub mod text_compressor{
             let tokens = result;
 
         // compress
-            let mut intermediate_compressed_bytes: Vec<Vec<u8>> = Vec::new();
+            // let mut intermediate_compressed_bytes: Vec<Vec<u8>> = Vec::new();
             let mut compressed_bytes: Vec<u8> = Vec::new();
             let mut last_was_plaintext = false;
             for token in tokens {
@@ -278,13 +286,13 @@ pub mod text_compressor{
                     for byte in word_bytes {
                         compressed_bytes.push(byte);
                     }
-                    intermediate_compressed_bytes.push(vec![word_bytes[0],word_bytes[1],word_bytes[2]]);
+                    // intermediate_compressed_bytes.push(vec![word_bytes[0],word_bytes[1],word_bytes[2]]);
                     last_was_plaintext = false;
                 } else {
                     // append token to file as plaintext
                     for byte in token.bytes(){
                         compressed_bytes.push(byte);
-                        intermediate_compressed_bytes.push(vec![byte])
+                        // intermediate_compressed_bytes.push(vec![byte])
                     }
                     last_was_plaintext = true;
                 }

@@ -20,7 +20,7 @@ fn main() {
         let compressed_bytes = text_compressor::compress(&contents, word_to_index).expect("Can't compress non ASCII character.");
 
     // decompress compressed message
-        let decompressed = text_compressor::decompress(&compressed_bytes, index_to_word);
+        let decompressed = text_compressor::decompress(&compressed_bytes, index_to_word).expect("Compressed data is malformed");
 
     // print decompressed string     
         println!("{}",decompressed);
