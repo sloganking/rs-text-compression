@@ -30,7 +30,7 @@ use std::collections::HashMap;
     }
 
 
-    fn decompress(compressed_bytes: Vec<u8>, index_to_word: HashMap<u32, String>) -> String{
+    fn decompress(compressed_bytes: &Vec<u8>, index_to_word: HashMap<u32, String>) -> String{
 
         let mut decompressed_text: String = String::new();
         let mut i = 0;
@@ -66,7 +66,7 @@ use std::collections::HashMap;
                             let mut first_char = String::new();
                             first_char.push(ch);
 
-                            word = first_char + &word[1..].to_lowercase();
+                            word = first_char.to_uppercase() + &word[1..].to_lowercase();
                         }else{
                             panic!("invalid capitalization state")
                         }
@@ -170,12 +170,14 @@ use std::collections::HashMap;
                 }
             }
 
+        // println!("{:?}",intermediate_compressed_bytes);
+
         Some(compressed_bytes)
     }
 
 fn main() {
 
-    // prepair word_to_index
+    // prepair word_to_index and index_to_word
         // retrieve words from json
             let mut file = File::open("./english-words/words.txt").expect("Failed to open file");
             let mut contents = String::new();
@@ -198,12 +200,9 @@ fn main() {
 
         // put words into word_to_index (for faster searching)
             // create word_to_index table
-                // let mut word_to_index: serde_json::Value = serde_json::from_str("{}").expect("JSON was not well-formatted");
-                // let word_to_index = word_to_index.as_object_mut().unwrap();
-
-                let mut word_to_index: HashMap<String, u32> = HashMap::new();
+            let mut word_to_index: HashMap<String, u32> = HashMap::new();
             // create index_to_word table
-                let mut index_to_word: HashMap<u32, String> = HashMap::new();
+            let mut index_to_word: HashMap<u32, String> = HashMap::new();
 
 
             for (i, line) in fixed_lines.iter().enumerate() {
@@ -213,20 +212,29 @@ fn main() {
 
         println!("done pre-processing");
 
-    // retrieve string from file
+    // retrieve string to compress from file
         let mut file = File::open("./input.txt").expect("Failed to open file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Failed to read to string");
             
     // compess tokens into bytes
-        let compressed_bytes = compress(&contents, word_to_index).expect("Can't compress non ASCII character.");
+    let compressed_bytes = compress(&contents, word_to_index).expect("Can't compress non ASCII character.");
 
-    // print compressed bytes
+    // decompress compressed message
+    let decompressed = decompress(&compressed_bytes, index_to_word);
 
-        // println!("{:?}",intermediate_compressed_bytes);
+    // print compressed bytes        
+    println!("{}",decompressed);
 
-        let decompressed = decompress(compressed_bytes, index_to_word);
-        println!("{}",decompressed);
+    println!("input file size:  {}",contents.len());
+    println!("output file size: {}",compressed_bytes.len());
+    println!("file size reduced by {}%", 1.0 - (compressed_bytes.len() as f64 / contents.len() as f64));
+
+    if decompressed == contents {
+        println!("text is the same, test passed!");
+    }else{
+        println!("text is the different, test failed");
+    }
             
 
 }
