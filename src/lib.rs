@@ -90,7 +90,7 @@ mod tests {
         // generate english tables
             let (_word_to_index, index_to_word) = text_compressor::generate_english_tables();
         // decompress compressed message
-            let decompressed = text_compressor::decompress(&vec![228, 207, 101], index_to_word);
+            let decompressed = text_compressor::decompress(&[228, 207, 101], index_to_word);
         assert_eq!(decompressed,None);
     }
 }
