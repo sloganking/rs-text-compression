@@ -96,16 +96,19 @@ mod tests {
 }
 
 pub mod text_compressor{
-    use std::{collections::HashMap, fs::File, io::Read};
+    use std::{collections::HashMap};
 
     // fn encode_word(word: &str){
     // }
 
     pub fn generate_english_tables() -> (HashMap<String, u32>, HashMap<u32, String>){
         // retrieve words from json
-            let mut file = File::open("./english-words/words.txt").expect("Failed to open file");
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).expect("Failed to read to string");
+            let bytes = include_bytes!("../english-words/words.txt");
+
+            let contents = match std::str::from_utf8(bytes) {
+                Ok(v) => v,
+                Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+            };
 
         // divide file by lines
             let lines: Vec<&str> = contents.split('\n').collect();
