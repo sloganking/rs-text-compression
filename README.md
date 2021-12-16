@@ -2,7 +2,8 @@
 
 ## Summary
 
-A Rust implementation of the text compression algorithm found [here](https://github.com/sloganking/text-compression). This implementation (single core) is around 1400x faster than it's python counterpart.
+A Rust implementation of the text compression algorithm found [here](https://github.com/sloganking/text-compression). This implementation (single core) is around 2057x faster than it's python counterpart.
+
 
 This repository contains a custom text compression algorithm, optimized for the english language. They key insight to the creation of this algorithm is that there are around 400,000 English words and the average English word is 5.1 characters long (not including the spaces next to it). as a result, we can assign a mapping of all english words to 19 bit combinations. I store these 19 bits inside 3 bytes, which left space for storing the upper/lower case of the each word, and whether they have spaces to the right or left of them. If a word or combination of characters is not in the known dictionary of words, or if encoding it would not decrease file size, it is stored as plain-text / 7 bit ascii.
 
