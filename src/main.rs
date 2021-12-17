@@ -41,7 +41,7 @@ fn main() {
         println!("Compressed file size now {:.1}% of original", (compressed_bytes.len() as f64 / contents.len() as f64) * 100.0);
 
         println!("Compression time: {:?}",compression_duration);
-        println!("Dcompression time: {:?}",decompression_duration);
+        println!("Decompression time: {:?}",decompression_duration);
 
     // write compressed data to file
         // use std::fs::OpenOptions;
