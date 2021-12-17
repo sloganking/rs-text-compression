@@ -102,7 +102,7 @@ pub mod text_compressor{
     // }
 
     pub fn generate_english_tables() -> (HashMap<String, u32>, HashMap<u32, String>){
-        // retrieve words from json
+        // retrieve words from file
             let bytes = include_bytes!("../english-words/words.txt");
 
             let contents = match std::str::from_utf8(bytes) {
