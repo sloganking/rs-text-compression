@@ -63,11 +63,11 @@ mod tests {
         thoughts were turned into the channel of their earlier bent.";
 
         // generate english tables
-            let (word_to_index, index_to_word) = text_compressor::generate_english_tables();
+            let index_pairs = text_compressor::generate_english_tables();
         // compess tokens into bytes
-            let compressed_bytes = text_compressor::compress(&text, word_to_index).expect("Can't compress non ASCII character.");
+            let compressed_bytes = text_compressor::compress(&text, &index_pairs[3].0).expect("Can't compress non ASCII character.");
         // decompress compressed message
-            let decompressed = text_compressor::decompress(&compressed_bytes, index_to_word).unwrap();
+            let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs[3].1).unwrap();
         // ensure compression/decompression was lossless
             assert_eq!(text,decompressed);
     }
@@ -79,18 +79,18 @@ mod tests {
         Petersburgh.";
 
         // generate english tables
-            let (word_to_index, _index_to_word) = text_compressor::generate_english_tables();
+        let index_pairs = text_compressor::generate_english_tables();
         // compess tokens into bytes
-            let compressed_bytes = text_compressor::compress(&text, word_to_index);
+            let compressed_bytes = text_compressor::compress(&text, &index_pairs[3].0);
         // ensure compression/decompression was lossless
             assert_eq!(compressed_bytes,None);
     }
     #[test]
     fn catch_malformed_compressed(){
         // generate english tables
-            let (_word_to_index, index_to_word) = text_compressor::generate_english_tables();
+            let index_pairs = text_compressor::generate_english_tables();
         // decompress compressed message
-            let decompressed = text_compressor::decompress(&[228, 207, 101], index_to_word);
+            let decompressed = text_compressor::decompress(&[228, 207, 101], &index_pairs[3].1);
         assert_eq!(decompressed,None);
     }
 }
@@ -101,17 +101,9 @@ pub mod text_compressor{
     // fn encode_word(word: &str){
     // }
 
-    pub fn generate_english_tables() -> (HashMap<String, u32>, HashMap<u32, String>){
-        // retrieve words from file
-            let bytes = include_bytes!("../english-words/words.txt");
-
-            let contents = match std::str::from_utf8(bytes) {
-                Ok(v) => v,
-                Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-            };
-
-        // divide file by lines
-            let lines: Vec<&str> = contents.split('\n').collect();
+    fn gen_index_tables_from(text: &str)  -> (HashMap<String, u32>, HashMap<u32, String>){
+        // divide text by lines
+            let lines: Vec<&str> = text.split('\n').collect();
 
         // remove return character from strings
             let mut fixed_lines: Vec<String> = Vec::new();
@@ -140,6 +132,44 @@ pub mod text_compressor{
             (word_to_index, index_to_word)
     }
 
+    pub fn generate_english_tables() -> Vec<(HashMap<String, u32>, HashMap<u32, String>)>{
+        
+        let mut index_pairs = vec![];
+
+        // create index for 1 byte encoding
+            // retrieve words from file
+                let bytes = include_bytes!("../top_100.txt");
+
+                let contents = match std::str::from_utf8(bytes) {
+                    Ok(v) => v,
+                    Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                };
+
+            // get the 0 index out of the way
+            // this goes unused
+            index_pairs.push(gen_index_tables_from(contents));
+
+            // append indexes for 1 byte
+            index_pairs.push(gen_index_tables_from(contents));
+
+        // create index for 2 byte encoding
+        // currently a dupe of 1
+            index_pairs.push(gen_index_tables_from(contents));
+        
+        // create index for 3 byte encoding
+            // retrieve words from file
+                let bytes = include_bytes!("../english-words/words.txt");
+
+                let contents = match std::str::from_utf8(bytes) {
+                    Ok(v) => v,
+                    Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                };
+
+            index_pairs.push(gen_index_tables_from(contents));
+
+        index_pairs
+    }
+
 
 
     fn is_valid_capitalization(word: &str) -> bool{
@@ -161,7 +191,7 @@ pub mod text_compressor{
         false
     }
 
-    pub fn decompress(compressed_bytes: &[u8], index_to_word: HashMap<u32, String>) -> Option<String>{
+    pub fn decompress(compressed_bytes: &[u8], index_to_word: &HashMap<u32, String>) -> Option<String>{
 
         let mut decompressed_text: String = String::new();
         let mut i = 0;
@@ -266,10 +296,26 @@ pub mod text_compressor{
 
     fn compress_word_to_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
 
-        None
+        let mut compressed_byte: u8 = 0;
+
+        if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' ' && word_to_index.contains_key(&token.to_string()){
+            // remove previously encoded space
+            // it will be encoded in the compressed word
+                compressed_bytes.pop();
+
+            compressed_byte = (word_to_index[token] as u8) & 0b00011111;
+        }else{
+            return None
+        }
+
+        compressed_byte |= 0b10100000;
+
+        Some(vec![compressed_byte])
+
+        // None
     }
 
-    pub fn compress(text: &str, word_to_index: HashMap<String, u32>) -> Option<Vec<u8>>{
+    pub fn compress(text: &str, index_pairs: &Vec<(HashMap<String, u32>, HashMap<u32, String>)>) -> Option<Vec<u8>>{
         // crash if non ascii(< 127) character
             for char in text.chars() {
                 if char as u32 > 127 {
@@ -294,27 +340,31 @@ pub mod text_compressor{
             let tokens = result;
 
         // compress
-            // let mut intermediate_compressed_bytes: Vec<Vec<u8>> = Vec::new();
             let mut compressed_bytes: Vec<u8> = Vec::new();
             let mut last_was_plaintext = false;
             for token in tokens {
 
-                let word_bytes = compress_word_to_3(token, &word_to_index, &mut compressed_bytes, last_was_plaintext);
+
+                // compress token if possible
+                    let mut word_bytes = compress_word_to_1(token, &index_pairs[1].0, &mut compressed_bytes, last_was_plaintext);
+                    if word_bytes == None {
+                        word_bytes = compress_word_to_3(token, &index_pairs[3].0, &mut compressed_bytes, last_was_plaintext);
+                    }
+
                 
 
                 match word_bytes {
                     Some(word_bytes) => {
+                        // append compressed token to compressed_bytes
                         for byte in word_bytes {
                             compressed_bytes.push(byte);
                         }
-                        // intermediate_compressed_bytes.push(vec![word_bytes[0],word_bytes[1],word_bytes[2]]);
                         last_was_plaintext = false;
                     }
                     None => {
                         // append token to file as plaintext
                         for byte in token.bytes(){
                             compressed_bytes.push(byte);
-                            // intermediate_compressed_bytes.push(vec![byte])
                         }
                         last_was_plaintext = true;
                     }

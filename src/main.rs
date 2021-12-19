@@ -8,7 +8,7 @@
 fn main() {
 
     // prepair word_to_index and index_to_word
-        let (word_to_index, index_to_word) = text_compressor::generate_english_tables();
+        let index_pairs = text_compressor::generate_english_tables();
 
     // retrieve string to compress from file
         let mut file = File::open("./input.txt").expect("Failed to open file");
@@ -19,14 +19,14 @@ fn main() {
             
     // compess tokens into bytes
         let start_time = SystemTime::now();
-        let compressed_bytes = text_compressor::compress(&contents, word_to_index).expect("Can't compress non ASCII character.");
+        let compressed_bytes = text_compressor::compress(&contents, &index_pairs).expect("Can't compress non ASCII character.");
         let compression_duration = SystemTime::now()
             .duration_since(start_time)
             .expect("Time went backwards");
 
     // decompress compressed message
         let start_time = SystemTime::now();
-        let decompressed = text_compressor::decompress(&compressed_bytes, index_to_word).expect("Compressed data is malformed");
+        let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs[3].1).expect("Compressed data is malformed");
         let decompression_duration = SystemTime::now()
             .duration_since(start_time)
             .expect("Time went backwards");
@@ -50,4 +50,21 @@ fn main() {
         //     // either use ? or unwrap since it returns a Result
         //     .open("./compressed").unwrap();
         // file.write_all(&compressed_bytes).expect("failed to save compressed file");
+
+    // let mut top_total:f64 = 0.0;
+    // let split_num = 32;
+    // for x in 1..=split_num{
+    //     top_total += 1.0/x as f64;
+    // }
+    // println!("top_total: {}",top_total);
+
+    // let mut bottom_total:f64 = 0.0;
+    // for x in split_num..=100{
+    //     bottom_total += 1.0/x as f64;
+    // }
+    // println!("bottom_total: {}",bottom_total);
+
+    // println!("{} ",  top_total / (top_total + bottom_total));
+
+
 }
