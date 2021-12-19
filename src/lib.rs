@@ -222,6 +222,53 @@ pub mod text_compressor{
         Some(decompressed_text)
     }
 
+    fn compress_word_to_3(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
+
+        if token.len() > 2 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
+
+            // bytes that store compressed word
+            let mut word_bytes = vec![0, 0, 0];
+
+            // encode and store word
+                let word_index = word_to_index[&token.to_lowercase()];
+
+                word_bytes[2] = word_index as u8;
+                word_bytes[1] = (word_index >> 8) as u8;
+                word_bytes[0] = (word_index >> 16) as u8 & 0b00000111;
+
+            // store case of word
+                if token == token.to_lowercase(){
+                    // bits are 00
+                } else if token == token.to_uppercase(){
+                    word_bytes[0] |= 0b00100000
+                } else if token[0..1] == token[0..1].to_uppercase() && token[1..] == token[1..].to_lowercase(){
+                    word_bytes[0] |= 0b01000000
+                } else {
+                    panic!("token \"{}\" slipped past is_valid_capitalization()", token);
+                }
+            // store spacing
+                if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' '{
+                    // erase last encoded space character
+                    compressed_bytes.pop();
+
+                    // encode last space in compressed word
+                    word_bytes[0] |= 16;
+                }
+
+            // make first bit a 1
+            // signals the start of a compressed word
+                word_bytes[0] |= 0b10000000;
+                return Some(word_bytes);
+        }else{
+            None
+        }
+    }
+
+    fn compress_word_to_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
+
+        None
+    }
+
     pub fn compress(text: &str, word_to_index: HashMap<String, u32>) -> Option<Vec<u8>>{
         // crash if non ascii(< 127) character
             for char in text.chars() {
@@ -251,53 +298,26 @@ pub mod text_compressor{
             let mut compressed_bytes: Vec<u8> = Vec::new();
             let mut last_was_plaintext = false;
             for token in tokens {
-                if token.len() > 2 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
 
-                    // bytes that store compressed word
-                    let mut word_bytes: [u8; 3] = [0, 0, 0];
+                let word_bytes = compress_word_to_3(token, &word_to_index, &mut compressed_bytes, last_was_plaintext);
+                
 
-                    // encode and store word
-                        let word_index = word_to_index[&token.to_lowercase()];
-
-                        word_bytes[2] = word_index as u8;
-                        word_bytes[1] = (word_index >> 8) as u8;
-                        word_bytes[0] = (word_index >> 16) as u8 & 0b00000111;
-
-                    // store case of word
-                        if token == token.to_lowercase(){
-                            // bits are 00
-                        } else if token == token.to_uppercase(){
-                            word_bytes[0] |= 0b00100000
-                        } else if token[0..1] == token[0..1].to_uppercase() && token[1..] == token[1..].to_lowercase(){
-                            word_bytes[0] |= 0b01000000
-                        } else {
-                            panic!("token \"{}\" slipped past is_valid_capitalization()", token);
+                match word_bytes {
+                    Some(word_bytes) => {
+                        for byte in word_bytes {
+                            compressed_bytes.push(byte);
                         }
-                    // store spacing
-                        if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' '{
-                            // erase last encoded space character
-                            compressed_bytes.pop();
-
-                            // encode last space in compressed word
-                            word_bytes[0] |= 16;
+                        // intermediate_compressed_bytes.push(vec![word_bytes[0],word_bytes[1],word_bytes[2]]);
+                        last_was_plaintext = false;
+                    }
+                    None => {
+                        // append token to file as plaintext
+                        for byte in token.bytes(){
+                            compressed_bytes.push(byte);
+                            // intermediate_compressed_bytes.push(vec![byte])
                         }
-
-                    // make first bit a 1
-                    // signals the start of a compressed word
-                        word_bytes[0] |= 0b10000000;
-
-                    for byte in word_bytes {
-                        compressed_bytes.push(byte);
+                        last_was_plaintext = true;
                     }
-                    // intermediate_compressed_bytes.push(vec![word_bytes[0],word_bytes[1],word_bytes[2]]);
-                    last_was_plaintext = false;
-                } else {
-                    // append token to file as plaintext
-                    for byte in token.bytes(){
-                        compressed_bytes.push(byte);
-                        // intermediate_compressed_bytes.push(vec![byte])
-                    }
-                    last_was_plaintext = true;
                 }
             }
 
