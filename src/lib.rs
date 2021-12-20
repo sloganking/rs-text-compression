@@ -65,7 +65,7 @@ mod tests {
         // generate english tables
             let index_pairs = text_compressor::generate_english_tables();
         // compess tokens into bytes
-            let compressed_bytes = text_compressor::compress(&text, &index_pairs[3].0).expect("Can't compress non ASCII character.");
+            let compressed_bytes = text_compressor::compress(&text, &index_pairs).expect("Can't compress non ASCII character.");
         // decompress compressed message
             let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs[3].1).unwrap();
         // ensure compression/decompression was lossless
@@ -81,7 +81,7 @@ mod tests {
         // generate english tables
         let index_pairs = text_compressor::generate_english_tables();
         // compess tokens into bytes
-            let compressed_bytes = text_compressor::compress(&text, &index_pairs[3].0);
+            let compressed_bytes = text_compressor::compress(&text, &index_pairs);
         // ensure compression/decompression was lossless
             assert_eq!(compressed_bytes,None);
     }
@@ -138,7 +138,7 @@ pub mod text_compressor{
 
         // create index for 1 byte encoding
             // retrieve words from file
-                let bytes = include_bytes!("../top_100.txt");
+                let bytes = include_bytes!("../top_32.txt");
 
                 let contents = match std::str::from_utf8(bytes) {
                     Ok(v) => v,
@@ -173,25 +173,24 @@ pub mod text_compressor{
 
 
     fn is_valid_capitalization(word: &str) -> bool{
-        if word == word.to_uppercase(){
-            return true
-        }
         if word == word.to_lowercase(){
             return true
         }
-        // println!("word: {}",word);
-        // println!("len: {}",word.chars().count());
-        if word.chars().count() < 2 {
-            return true
-        }
+
+        // should this be here?
+            // if word.chars().count() < 2 {
+            //     return true
+            // }
+
         // if first char is uppercase, and rest are lowercase
         if word[0..1] == word[0..1].to_uppercase() && word[1..] == word[1..].to_lowercase(){
             return true
         }
+        
         false
     }
 
-    pub fn decompress(compressed_bytes: &[u8], index_to_word: &HashMap<u32, String>) -> Option<String>{
+    pub fn decompress(compressed_bytes: &[u8], index_pairs: &Vec<(HashMap<String, u32>, HashMap<u32, String>)>) -> Option<String>{
 
         let mut decompressed_text: String = String::new();
         let mut i = 0;
@@ -214,7 +213,7 @@ pub mod text_compressor{
                     word_index &= 0b000001111111111111111111;
 
                 // build text
-                    let mut word = index_to_word[&word_index].clone();
+                    let mut word = index_pairs[3].1[&word_index].clone();
                     // capitalize word
                         if capstate == 0{
                             // is this necessary?
@@ -254,7 +253,14 @@ pub mod text_compressor{
 
     fn compress_word_to_3(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
 
-        if token.len() > 2 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
+        if last_was_plaintext == false {
+            return None
+        }
+
+        let last_char = compressed_bytes[compressed_bytes.len() - 1] as char;
+
+
+        if (last_char == ' ' || last_char == '\n') && token.len() >= 3 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
 
             // bytes that store compressed word
             let mut word_bytes = vec![0, 0, 0];
@@ -266,28 +272,35 @@ pub mod text_compressor{
                 word_bytes[1] = (word_index >> 8) as u8;
                 word_bytes[0] = (word_index >> 16) as u8 & 0b00000111;
 
-            // store case of word
-                if token == token.to_lowercase(){
-                    // bits are 00
-                } else if token == token.to_uppercase(){
-                    word_bytes[0] |= 0b00100000
-                } else if token[0..1] == token[0..1].to_uppercase() && token[1..] == token[1..].to_lowercase(){
-                    word_bytes[0] |= 0b01000000
-                } else {
-                    panic!("token \"{}\" slipped past is_valid_capitalization()", token);
-                }
-            // store spacing
-                if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' '{
-                    // erase last encoded space character
-                    compressed_bytes.pop();
+            // store case/prevchar of word
 
-                    // encode last space in compressed word
-                    word_bytes[0] |= 16;
-                }
+                let space_in_front = last_char == ' ';
+                let return_in_front = last_char == '\n';
+                let undercase = token == token.to_lowercase();
+                let first_upper = token[0..1] == token[0..1].to_uppercase() && token[1..] == token[1..].to_lowercase();
 
-            // make first bit a 1
-            // signals the start of a compressed word
-                word_bytes[0] |= 0b10000000;
+                println!("undercase {}",undercase);
+                println!("space_in_front {}",space_in_front);
+                println!("{}",token);
+
+                let case: u8 = if undercase && space_in_front{
+                    0b00
+                } else if undercase && return_in_front{
+                    0b01
+                } else if first_upper && space_in_front{
+                    0b10
+                } else if first_upper && return_in_front{
+                    0b11
+                }else{
+                    panic!("invalid case/prevchar");
+                };
+
+                compressed_bytes.pop();
+
+                word_bytes[0] |= case << 3;
+
+            // signals the start of a 3 byte compressed word
+                word_bytes[0] |= 0b11100000;
                 return Some(word_bytes);
         }else{
             None
@@ -304,15 +317,11 @@ pub mod text_compressor{
                 compressed_bytes.pop();
 
             compressed_byte = (word_to_index[token] as u8) & 0b00011111;
+            compressed_byte |= 0b10100000;
+            Some(vec![compressed_byte])
         }else{
-            return None
+            None
         }
-
-        compressed_byte |= 0b10100000;
-
-        Some(vec![compressed_byte])
-
-        // None
     }
 
     pub fn compress(text: &str, index_pairs: &Vec<(HashMap<String, u32>, HashMap<u32, String>)>) -> Option<Vec<u8>>{
