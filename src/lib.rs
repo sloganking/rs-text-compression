@@ -279,10 +279,6 @@ pub mod text_compressor{
                 let undercase = token == token.to_lowercase();
                 let first_upper = token[0..1] == token[0..1].to_uppercase() && token[1..] == token[1..].to_lowercase();
 
-                println!("undercase {}",undercase);
-                println!("space_in_front {}",space_in_front);
-                println!("{}",token);
-
                 let case: u8 = if undercase && space_in_front{
                     0b00
                 } else if undercase && return_in_front{
