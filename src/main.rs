@@ -11,7 +11,7 @@ fn main() {
         let index_pairs = text_compressor::generate_english_tables();
 
     // retrieve string to compress from file
-        let mut file = File::open("./input.txt").expect("Failed to open file");
+        let mut file = File::open("./codebreaker/frankenstein.txt").expect("Failed to open file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Failed to read to string");
 

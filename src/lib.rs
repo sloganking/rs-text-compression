@@ -8,7 +8,7 @@ mod tests {
     fn integration_test(){
 
         // retrieve string to compress from file
-        let mut file = File::open("./input.txt").expect("Failed to open file");
+        let mut file = File::open("./codebreaker/frankenstein.txt").expect("Failed to open file");
         let mut text = String::new();
         file.read_to_string(&mut text).expect("Failed to read to string");
 
