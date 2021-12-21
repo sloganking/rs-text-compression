@@ -36,15 +36,6 @@ mod tests {
             assert_eq!(compressed_bytes,None);
     }
 
-    // #[test]
-    // fn catch_malformed_compressed(){
-    //     // generate english tables
-    //         let index_pairs = text_compressor::generate_english_tables();
-    //     // decompress compressed message
-    //         let decompressed = text_compressor::decompress(&[228, 207, 101], &index_pairs[3].1);
-    //     assert_eq!(decompressed,None);
-    // }
-
     #[test]
     fn compress_decompress_1(){
         let text = " of";
@@ -116,10 +107,6 @@ mod tests {
             assert_eq!(None,decompressed);
     }
 }
-
-
-
-// Frankenstein
 
 pub mod text_compressor{
     use std::{collections::HashMap};
@@ -202,11 +189,6 @@ pub mod text_compressor{
             return true
         }
 
-        // should this be here?
-            // if word.chars().count() < 2 {
-            //     return true
-            // }
-
         // if first char is uppercase, and rest are lowercase
         if word[0..1] == word[0..1].to_uppercase() && word[1..] == word[1..].to_lowercase(){
             return true
@@ -223,7 +205,6 @@ pub mod text_compressor{
         if index_to_word.contains_key(&word_index){
             return Some(" ".to_string() + &index_to_word[&word_index])
         }
-
         None
     }
 
@@ -284,8 +265,6 @@ pub mod text_compressor{
             // if next three bytes are a compressed word
             if compressed_bytes[i] & 128 != 0{
 
-
-
                 // get encoding length
                     let encoding_length = (compressed_bytes[i] & 0b01100000) >> 5;
 
@@ -326,12 +305,10 @@ pub mod text_compressor{
 
     fn compress_beginning(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
 
-
         let mut max_len = 4;
         if token.len() < 4{
             max_len = token.len();
         }
-
 
         for i in (1..=max_len).rev(){
             match compress_1(&token[0..i], word_to_index, compressed_bytes, last_was_plaintext){
@@ -411,7 +388,6 @@ pub mod text_compressor{
 
         let last_char = compressed_bytes[compressed_bytes.len() - 1] as char;
 
-
         if (last_char == ' ' || last_char == '\n') && token.len() >= 3 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
 
             // bytes that store compressed word
@@ -488,8 +464,6 @@ pub mod text_compressor{
                         word_bytes = compress_beginning(token, &index_pairs[1].0, &mut compressed_bytes, last_was_plaintext);
                     }               
 
-                
-
                 match word_bytes {
                     Some(word_bytes) => {
                         // append compressed token to compressed_bytes
@@ -507,7 +481,6 @@ pub mod text_compressor{
                     }
                 }
             }
-
         Some(compressed_bytes)
     }
 }
