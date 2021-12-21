@@ -158,11 +158,6 @@ pub mod text_compressor{
                 fixed_lines.push(line.replace(carrage_return, ""));
             }
 
-        // ensure lines are all lower case
-            for line in &mut fixed_lines{
-                line.make_ascii_lowercase();
-            }
-
         // put words into word_to_index (for faster searching)
             // create word_to_index table
             let mut word_to_index: HashMap<String, u32> = HashMap::new();
@@ -206,7 +201,7 @@ pub mod text_compressor{
                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                 };
 
-            index_pairs.push(gen_index_tables_from(contents));
+            index_pairs.push(gen_index_tables_from(&contents.to_lowercase()));
         
         // create index for 3 byte encoding
             // retrieve words from file
@@ -217,7 +212,7 @@ pub mod text_compressor{
                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                 };
 
-            index_pairs.push(gen_index_tables_from(contents));
+            index_pairs.push(gen_index_tables_from(&contents.to_lowercase()));
 
         index_pairs
     }
