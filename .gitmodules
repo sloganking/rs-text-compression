@@ -1,3 +1,6 @@
 [submodule "english-words"]
 	path = english-words
 	url = https://github.com/dwyl/english-words
+[submodule "codebreaker"]
+	path = codebreaker
+	url = https://github.com/asweigart/codebreaker
