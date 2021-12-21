@@ -67,7 +67,7 @@ mod tests {
         // compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, &index_pairs).expect("Can't compress non ASCII character.");
         // decompress compressed message
-            let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs[3].1).unwrap();
+            let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs).unwrap();
         // ensure compression/decompression was lossless
             assert_eq!(text,decompressed);
     }
@@ -85,15 +85,61 @@ mod tests {
         // ensure compression/decompression was lossless
             assert_eq!(compressed_bytes,None);
     }
+
+    // #[test]
+    // fn catch_malformed_compressed(){
+    //     // generate english tables
+    //         let index_pairs = text_compressor::generate_english_tables();
+    //     // decompress compressed message
+    //         let decompressed = text_compressor::decompress(&[228, 207, 101], &index_pairs[3].1);
+    //     assert_eq!(decompressed,None);
+    // }
+
     #[test]
-    fn catch_malformed_compressed(){
+    fn compress_3_byte(){
+        let text = " Frankenstein";
+        
+
+        // generate english tables
+        let index_pairs = text_compressor::generate_english_tables();
+        // compess tokens into bytes
+            let compressed_bytes = text_compressor::compress(&text, &index_pairs);
+        // ensure compression/decompression was lossless
+
+            // 3 bytes compressed word with capital first lette and space =
+            // 0b011110
+
+            // Frankenstein = 
+            // 146326
+            // 010 00111011 10010110
+
+            let bytes: Option<Vec<u8>> = Some(vec![0b11110010, 0b00111011, 0b10010110]);
+            assert_eq!(compressed_bytes, bytes);
+    }
+
+    #[test]
+    fn compress_1_byte(){
+        let text = " of";
+        
+
         // generate english tables
             let index_pairs = text_compressor::generate_english_tables();
+        // compess tokens into bytes
+            let compressed_bytes = text_compressor::compress(&text, &index_pairs);
+        // ensure compression/decompression was lossless
+            let bytes: Option<Vec<u8>> = Some(vec![0b10100011]);
+            assert_eq!(compressed_bytes, bytes);
+
         // decompress compressed message
-            let decompressed = text_compressor::decompress(&[228, 207, 101], &index_pairs[3].1);
-        assert_eq!(decompressed,None);
+            let decompressed = text_compressor::decompress(&bytes.unwrap(), &index_pairs).unwrap();
+        // ensure compression/decompression was lossless
+            assert_eq!(text,decompressed);
     }
 }
+
+
+
+// Frankenstein
 
 pub mod text_compressor{
     use std::{collections::HashMap};
@@ -190,6 +236,42 @@ pub mod text_compressor{
         false
     }
 
+    fn decompress_1(byte: u8, index_to_word: &HashMap<u32, String>) -> Option<String> {
+
+        // get word
+        let word_index: u32 = (byte & 0b00011111) as u32;
+
+        if index_to_word.contains_key(&word_index){
+            return Some(" ".to_string() + &index_to_word[&word_index])
+        }
+
+        None
+    }
+
+    fn decompress_3(bytes: &[u8], index_to_word: &HashMap<u32, String>) -> Option<String> {
+        // get word index
+            // convert bytes to u32 number
+            let mut word_index: u32 = ((bytes[0] as u32) << 16) | ((bytes[1] as u32) << 8) | bytes[2] as u32;
+            // limit to 19 bits
+            word_index &= 0b000001111111111111111111;
+        // get word
+            let word = &index_to_word[&word_index];
+
+        // get case/prevchar of word
+            let case_prevchar = (bytes[0] & 0b00011000) >> 3;
+
+        // apply case/prevchar to word
+            let decompressed = match case_prevchar{
+                0 => Some(' '.to_string() + &word.to_lowercase()),
+                1 => Some('\n'.to_string() + &word.to_lowercase()),
+                2 => Some(' '.to_string() + &word[0..1].to_uppercase() + &word[1..].to_lowercase()),
+                3 => Some('\n'.to_string() + &word[0..1].to_uppercase() + &word[1..].to_lowercase()),
+                _ => None,
+            };
+
+        decompressed
+    }
+
     pub fn decompress(compressed_bytes: &[u8], index_pairs: &Vec<(HashMap<String, u32>, HashMap<u32, String>)>) -> Option<String>{
 
         let mut decompressed_text: String = String::new();
@@ -197,52 +279,83 @@ pub mod text_compressor{
         while i < compressed_bytes.len(){
             // if next three bytes are a compressed word
             if compressed_bytes[i] & 128 != 0{
-                // get spaces
-                    let left_space = compressed_bytes[i] & 16 != 0;
-                    let right_space = compressed_bytes[i] & 8 != 0;
 
-                // get capitalization
-                    // 00 = allLower
-                    // 01 = allUpper
-                    // 10 = firstCharUpper restLower
-                    let capstate = (compressed_bytes[i] >> 5) & 3;
-                // get word index
-                    // convert bytes to u32 number
-                    let mut word_index: u32 = ((compressed_bytes[i] as u32) << 16) | ((compressed_bytes[i + 1] as u32) << 8) | compressed_bytes[i + 2] as u32;
-                    // limit to 19 bits
-                    word_index &= 0b000001111111111111111111;
 
-                // build text
-                    let mut word = index_pairs[3].1[&word_index].clone();
-                    // capitalize word
-                        if capstate == 0{
-                            // is this necessary?
-                            word = word.to_lowercase();
-                        }else if capstate == 1{
-                            word = word.to_uppercase();  
-                        }else if capstate == 2{
-                            // make first char uppercase
-                            let ch = word.chars().next().unwrap();
-                            let mut first_char = String::new();
-                            first_char.push(ch);
 
-                            word = first_char.to_uppercase() + &word[1..].to_lowercase();
-                        }else{
-                            return None
-                        }
-                    // append any spacing
-                        let mut text = word;
-                        if left_space {
-                            text = String::from(" ") + &text;
-                        }
-                        if right_space{
-                            text =  text.to_string() + " ";
-                        }
-                    // store decompressed text
-                        decompressed_text = decompressed_text + &text;
+                // get encoding length
+                    let encoding_length = (compressed_bytes[i] & 0b01100000) >> 5;
+
+                // decode encoded word
+                    // println!("encoding_length: {} i: {}",encoding_length, i);
+                    // println!("{}",decompressed_text);
+                    let decoded = match encoding_length{
+                        1 => {
+                            let decompressed = decompress_1(compressed_bytes[i], &index_pairs[1].1);
+                            i+=1;
+                            decompressed
+                        },
+                        3 => {
+                            let decompressed = decompress_3(&compressed_bytes[i..i+3], &index_pairs[3].1);
+                            i+=3;
+                            decompressed
+                        },
+                        _ => None,
+                    };
+
+                // store decompressed text
+                    match decoded{
+                        Some(x) => decompressed_text = decompressed_text + &x,
+                        _ => return None,
+                    }
+
+
+
+                // // get spaces
+                //     let left_space = compressed_bytes[i] & 16 != 0;
+                //     let right_space = compressed_bytes[i] & 8 != 0;
+
+                // // get capitalization
+                //     // 00 = allLower
+                //     // 01 = allUpper
+                //     // 10 = firstCharUpper restLower
+                //     let capstate = (compressed_bytes[i] >> 5) & 3;
+                // // get word index
+                //     // convert bytes to u32 number
+                //     let mut word_index: u32 = ((compressed_bytes[i] as u32) << 16) | ((compressed_bytes[i + 1] as u32) << 8) | compressed_bytes[i + 2] as u32;
+                //     // limit to 19 bits
+                //     word_index &= 0b000001111111111111111111;
+
+                // // build text
+                //     let mut word = index_pairs[3].1[&word_index].clone();
+                //     // capitalize word
+                //         if capstate == 0{
+                //             // is this necessary?
+                //             word = word.to_lowercase();
+                //         }else if capstate == 1{
+                //             word = word.to_uppercase();  
+                //         }else if capstate == 2{
+                //             // make first char uppercase
+                //             let ch = word.chars().next().unwrap();
+                //             let mut first_char = String::new();
+                //             first_char.push(ch);
+
+                //             word = first_char.to_uppercase() + &word[1..].to_lowercase();
+                //         }else{
+                //             return None
+                //         }
+                //     // append any spacing
+                //         let mut text = word;
+                //         if left_space {
+                //             text = String::from(" ") + &text;
+                //         }
+                //         if right_space{
+                //             text =  text.to_string() + " ";
+                //         }
+                //     // store decompressed text
+                //         decompressed_text = decompressed_text + &text;
                     
-                    // update current byte
-                        i += 3;
+                //     // update current byte
+                //         i += 3;
             }else{
                 decompressed_text.push(compressed_bytes[i] as char);
                 i += 1;
@@ -251,7 +364,7 @@ pub mod text_compressor{
         Some(decompressed_text)
     }
 
-    fn compress_word_to_3(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
+    fn compress_3(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
 
         if last_was_plaintext == false {
             return None
@@ -297,13 +410,14 @@ pub mod text_compressor{
 
             // signals the start of a 3 byte compressed word
                 word_bytes[0] |= 0b11100000;
+
                 return Some(word_bytes);
         }else{
             None
         }
     }
 
-    fn compress_word_to_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
+    fn compress_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
 
         let mut compressed_byte: u8 = 0;
 
@@ -314,6 +428,12 @@ pub mod text_compressor{
 
             compressed_byte = (word_to_index[token] as u8) & 0b00011111;
             compressed_byte |= 0b10100000;
+
+
+            if compressed_byte == 202{
+                println!("");
+            }
+
             Some(vec![compressed_byte])
         }else{
             None
@@ -351,9 +471,9 @@ pub mod text_compressor{
 
 
                 // compress token if possible
-                    let mut word_bytes = compress_word_to_1(token, &index_pairs[1].0, &mut compressed_bytes, last_was_plaintext);
+                    let mut word_bytes = compress_1(token, &index_pairs[1].0, &mut compressed_bytes, last_was_plaintext);
                     if word_bytes == None {
-                        word_bytes = compress_word_to_3(token, &index_pairs[3].0, &mut compressed_bytes, last_was_plaintext);
+                        word_bytes = compress_3(token, &index_pairs[3].0, &mut compressed_bytes, last_was_plaintext);
                     }
 
                 

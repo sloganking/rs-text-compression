@@ -26,7 +26,7 @@ fn main() {
 
     // decompress compressed message
         let start_time = SystemTime::now();
-        let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs[3].1).expect("Compressed data is malformed");
+        let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs).expect("Compressed data is malformed");
         let decompression_duration = SystemTime::now()
             .duration_since(start_time)
             .expect("Time went backwards");
