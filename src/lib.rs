@@ -364,6 +364,65 @@ pub mod text_compressor{
         Some(decompressed_text)
     }
 
+    fn compress_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
+
+        let mut compressed_byte: u8 = 0;
+
+        if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' ' && word_to_index.contains_key(&token.to_string()){
+            // remove previously encoded space
+            // it will be encoded in the compressed word
+                compressed_bytes.pop();
+
+            compressed_byte = (word_to_index[token] as u8) & 0b00011111;
+            compressed_byte |= 0b10100000;
+
+            Some(vec![compressed_byte])
+        }else{
+            None
+        }
+    }
+
+    fn compress_2(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
+
+        if last_was_plaintext == false {
+            return None
+        }
+
+        let last_char = compressed_bytes[compressed_bytes.len() - 1] as char;
+
+        if (last_char == ' ' || last_char == '\n') && token.len() >= 2 && is_valid_capitalization(token) && word_to_index.contains_key(&token.to_lowercase()){
+
+            // bytes that store compressed word
+            let mut word_bytes = vec![0, 0];
+
+            // encode and store word
+                let word_index = word_to_index[&token.to_lowercase()];
+
+                word_bytes[1] = word_index as u8;
+                word_bytes[0] = (word_index >> 8) as u8 & 0b00000111;
+
+            // store previous char
+            // (0 = ' ', 1 = '\n')
+                if last_char == '\n'{
+                    word_bytes[0] |= 0b00010000;
+                }
+
+            // store first char case
+            // (0 = lower, 1 = upper)
+                if token[0..1] == token[0..1].to_uppercase(){
+                    word_bytes[0] |= 0b00001000;
+                }
+
+            // signals the start of a 2 byte compressed word
+            word_bytes[0] |= 0b11000000;
+
+            return Some(word_bytes);
+
+        }else{
+            None
+        }
+    }
+
     fn compress_3(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
 
         if last_was_plaintext == false {
@@ -412,29 +471,6 @@ pub mod text_compressor{
                 word_bytes[0] |= 0b11100000;
 
                 return Some(word_bytes);
-        }else{
-            None
-        }
-    }
-
-    fn compress_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
-
-        let mut compressed_byte: u8 = 0;
-
-        if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' ' && word_to_index.contains_key(&token.to_string()){
-            // remove previously encoded space
-            // it will be encoded in the compressed word
-                compressed_bytes.pop();
-
-            compressed_byte = (word_to_index[token] as u8) & 0b00011111;
-            compressed_byte |= 0b10100000;
-
-
-            if compressed_byte == 202{
-                println!("");
-            }
-
-            Some(vec![compressed_byte])
         }else{
             None
         }
