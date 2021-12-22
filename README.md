@@ -32,7 +32,7 @@ A word who's previous character and case are determined by ``B`` and ``C``.
 
 A word who's previous character and case are determined by ``B`` and ``C``.
 
-### Key:
+## Encoding Key:
 
 All byte encodings start with ``AXXXXXXX``. If ``A`` is 0, the byte is plaintext ASCII. If ``A`` is 1, that byte represents a compressed word and the ``B`` bytes ``ABBXXXXX`` are used to determine what type and thus the rest of the encoding.
 
