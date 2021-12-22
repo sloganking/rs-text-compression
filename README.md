@@ -36,17 +36,17 @@ A word who's previous character and case are determined by ``B`` and ``C``.
 
 All byte encodings start with ``AXXXXXXX``. If ``A`` is 0, the byte is plaintext ASCII. If ``A`` is 1, that byte represents a compressed word and the ``B`` bytes ``ABBXXXXX`` are used to determine what type and thus the rest of the encoding.
 
-A - Is this a compressed word or an ASCII character? (0 = char, 1 = compressed)
+- ``A`` - Is this a compressed word or an ASCII character? (0 = char, 1 = compressed)
 
-B - 2 bit integer storing the byte length of the encoded word
+- ``B`` - 2 bit integer storing the byte length of the compressed word
 
-C - what character came before this word? (0 = ' ', 1 = '\n')
+- ``C`` - What character came before this word? (0 = ' ', 1 = '\n')
 
-D - Case of the first character in the word (0 = lower, 1 = upper)
+- ``D`` - Case of the first character in the word (0 = lower, 1 = upper)
 
-E - Integer storing the index of the compressed word
+- ``E`` - Integer storing the index of the compressed word
 
-X - A bit that can be either a 0 or a 1
+- ``X`` - A bit that can be either a 0 or a 1
 
 ## Notes
 
