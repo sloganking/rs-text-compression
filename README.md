@@ -15,16 +15,22 @@ There are four types of encodings
 ### ASCII
 ``0XXXXXXX``
 
-A non-compressed plaintext ASCII (<127) character
+A non-compressed plaintext ASCII (<127) character.
 
 ### 1 byte
 ``101EEEEE``
 
+A word with a space character before it.
+
 ### 2 byte
 ``110BCEEE EEEEEEEE``
 
+A word who's previous character and case are determined by ``B`` and ``C``.
+
 ### 3 byte
 ``111BCEEE EEEEEEEE EEEEEEEE``
+
+A word who's previous character and case are determined by ``B`` and ``C``.
 
 ### Key:
 
