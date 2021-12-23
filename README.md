@@ -23,12 +23,12 @@ A non-compressed plaintext ASCII (<127) character.
 A word with a space character before it.
 
 ### 2 byte
-``110BCEEE EEEEEEEE``
+``110CDEEE EEEEEEEE``
 
 A word who's previous character and case are determined by ``B`` and ``C``.
 
 ### 3 byte
-``111BCEEE EEEEEEEE EEEEEEEE``
+``111CDEEE EEEEEEEE EEEEEEEE``
 
 A word who's previous character and case are determined by ``B`` and ``C``.
 
