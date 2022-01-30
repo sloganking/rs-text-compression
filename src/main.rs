@@ -1,9 +1,7 @@
-// initialization
-    // import dependancies
-        use std::fs::{File};
-        use std::io::prelude::*;
-        use std::time::SystemTime;
-        use rs_text_compression::text_compressor;
+use std::fs::File;
+use std::io::prelude::*;
+use std::time::SystemTime;
+use rs_text_compression::text_compressor;
 
 fn main() {
 

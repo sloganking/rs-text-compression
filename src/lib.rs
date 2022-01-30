@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::text_compressor;
-    use std::fs::{File};
+    use std::fs::File;
     use std::io::prelude::*;
 
     #[test]
