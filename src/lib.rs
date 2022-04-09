@@ -12,14 +12,15 @@ mod tests {
         let mut text = String::new();
         file.read_to_string(&mut text).expect("Failed to read to string");
 
-        // generate english tables
+        //> generate english tables
             let index_pairs = text_compressor::generate_english_tables();
-        // compess tokens into bytes
+        //<> compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, &index_pairs).expect("Can't compress non ASCII character.");
-        // decompress compressed message
+        //<> decompress compressed message
             let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs).unwrap();
-        // ensure compression/decompression was lossless
+        //<> ensure compression/decompression was lossless
             assert_eq!(text,decompressed);
+        //<
     }
 
     #[test]
@@ -30,37 +31,39 @@ mod tests {
 
         // generate english tables
         let index_pairs = text_compressor::generate_english_tables();
-        // compess tokens into bytes
+        //> compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, &index_pairs);
-        // ensure compression/decompression was lossless
+        //<> ensure compression/decompression was lossless
             assert_eq!(compressed_bytes,None);
+        //<
     }
 
     #[test]
     fn compress_decompress_1(){
         let text = " of";
-        
-        // generate english tables
+
+        //> generate english tables
             let index_pairs = text_compressor::generate_english_tables();
-        // compess tokens into bytes
+        //<> compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, &index_pairs).unwrap();
-        // ensure correct compression
+        //<> ensure correct compression
             assert_eq!(compressed_bytes, &[0b10100011]);
-        // decompress compressed message
+        //<> decompress compressed message
             let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs).unwrap();
-        // ensure compression/decompression was lossless
+        //<> ensure compression/decompression was lossless
             assert_eq!(decompressed, text);
+        //<
     }
 
     #[test]
     fn compress_decompress_2(){
         let text = " Accommodation";
-        
-        // generate english tables
+
+        //> generate english tables
             let index_pairs = text_compressor::generate_english_tables();
-        // compess tokens into bytes
+        //<> compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, &index_pairs).unwrap();
-        // ensure correct compression
+        //<> ensure correct compression
             // 2 bytes compressed word with capital first letter and space =
             // 0b11001
 
@@ -68,21 +71,22 @@ mod tests {
             // 1348
             // 101 01000100
             assert_eq!(compressed_bytes, vec![0b11001101, 0b01000100]);
-        // decompress compressed message
+        //<> decompress compressed message
             let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs).unwrap();
-        // ensure compression/decompression was lossless
+        //<> ensure compression/decompression was lossless
             assert_eq!(decompressed, text);
+        //<
     }
 
     #[test]
     fn compress_decompress_3(){
         let text = " Frankenstein";
-        
+
         // generate english tables
         let index_pairs = text_compressor::generate_english_tables();
-        // compess tokens into bytes
+        //> compess tokens into bytes
             let compressed_bytes = text_compressor::compress(&text, &index_pairs).unwrap();
-        // ensure compression/decompression was lossless
+        //<> ensure compression/decompression was lossless
 
             // 3 bytes compressed word with capital first lette and space =
             // 0b011110
@@ -93,18 +97,20 @@ mod tests {
 
             assert_eq!(compressed_bytes, &[0b11101010, 0b00111011, 0b10010110]);
 
-        // decompress compressed message
+        //<> decompress compressed message
             let decompressed = text_compressor::decompress(&compressed_bytes, &index_pairs).unwrap();
-        // ensure compression/decompression was lossless
+        //<> ensure compression/decompression was lossless
             assert_eq!(decompressed, text);
+        //<
     }
 
     #[test]
     fn catch_invalid_encoding_length(){
-        // generate english tables
+        //> generate english tables
             let index_pairs = text_compressor::generate_english_tables();
             let decompressed = text_compressor::decompress(&[0b10000000], &index_pairs);
             assert_eq!(None,decompressed);
+        //<
     }
 }
 
@@ -115,17 +121,17 @@ pub mod text_compressor{
     // }
 
     fn gen_index_tables_from(text: &str)  -> (HashMap<String, u32>, HashMap<u32, String>){
-        // divide text by lines
+        //> divide text by lines
             let lines: Vec<&str> = text.split('\n').collect();
 
-        // remove return character from strings
+        //<> remove return character from strings
             let mut fixed_lines: Vec<String> = Vec::new();
             let carrage_return = 13 as char;
             for line in lines{
                 fixed_lines.push(line.replace(carrage_return, ""));
             }
 
-        // put words into word_to_index (for faster searching)
+        //<> put words into word_to_index (for faster searching)
             // create word_to_index table
             let mut word_to_index: HashMap<String, u32> = HashMap::new();
             // create index_to_word table
@@ -138,20 +144,22 @@ pub mod text_compressor{
             }
 
             (word_to_index, index_to_word)
+        //<
     }
 
     pub fn generate_english_tables() -> Vec<(HashMap<String, u32>, HashMap<u32, String>)>{
-        
+
         let mut index_pairs = vec![];
 
-        // create index for 1 byte encoding
-            // retrieve words from file
+        //> create index for 1 byte encoding
+            //> retrieve words from file
                 let bytes = include_bytes!("../top_32.txt");
 
                 let contents = match std::str::from_utf8(bytes) {
                     Ok(v) => v,
                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                 };
+            //<
 
             // get the 0 index out of the way
             // this goes unused
@@ -160,26 +168,29 @@ pub mod text_compressor{
             // append indexes for 1 byte
             index_pairs.push(gen_index_tables_from(contents));
 
-        // create index for 2 byte encoding
-            // retrieve words from file
+        //<> create index for 2 byte encoding
+            //> retrieve words from file
                 let bytes = include_bytes!("../top_2048.txt");
                 let contents = match std::str::from_utf8(bytes) {
                     Ok(v) => v,
                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                 };
+            //<
 
             index_pairs.push(gen_index_tables_from(&contents.to_lowercase()));
-        
-        // create index for 3 byte encoding
-            // retrieve words from file
+
+        //<> create index for 3 byte encoding
+            //> retrieve words from file
                 let bytes = include_bytes!("../english-words/words.txt");
 
                 let contents = match std::str::from_utf8(bytes) {
                     Ok(v) => v,
                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                 };
+            //<
 
             index_pairs.push(gen_index_tables_from(&contents.to_lowercase()));
+        //<
 
         index_pairs
     }
@@ -193,7 +204,7 @@ pub mod text_compressor{
         if word[0..1] == word[0..1].to_uppercase() && word[1..] == word[1..].to_lowercase(){
             return true
         }
-        
+
         false
     }
 
@@ -209,52 +220,58 @@ pub mod text_compressor{
     }
 
     fn decompress_2(bytes: &[u8], index_to_word: &HashMap<u32, String>) -> Option<String> {
-        // get word index
+        //> get word index
             // convert bytes to u32 number
             let mut word_index: u32 = ((bytes[0] as u32) << 8) | bytes[1] as u32;
             // limit to 11 bits
             word_index &= 0b000000000000011111111111;
-            
-        // get word
+
+        //<> get word
             let word = &index_to_word[&word_index];
+        //<
 
         // get previous char
-        // (0 = ' ', 1 = '\n')
+        //> (0 = ' ', 1 = '\n')
             let prev_char = match bytes[0] & 0b00010000{
                 0 => ' ',
                 _ => '\n',
             };
+        //<
 
         // get first char case
-        // (0 = lower, 1 = upper)
+        //> (0 = lower, 1 = upper)
             match bytes[0] & 0b00001000{
                 0 => Some(prev_char.to_string() + &word.to_lowercase()),
                 _ => Some(prev_char.to_string() + &word[0..1].to_uppercase() + &word[1..].to_lowercase()), 
             }
+        //<
     }
 
     fn decompress_3(bytes: &[u8], index_to_word: &HashMap<u32, String>) -> Option<String> {
-        // get word index
+        //> get word index
             // convert bytes to u32 number
             let mut word_index: u32 = ((bytes[0] as u32) << 16) | ((bytes[1] as u32) << 8) | bytes[2] as u32;
             // limit to 19 bits
             word_index &= 0b000001111111111111111111;
-        // get word
+        //<> get word
             let word = &index_to_word[&word_index];
+        //<
 
         // get previous char
-        // (0 = ' ', 1 = '\n')
+        //> (0 = ' ', 1 = '\n')
             let prev_char = match bytes[0] & 0b00010000{
                 0 => ' ',
                 _ => '\n',
             };
+        //<
 
         // get first char case
-        // (0 = lower, 1 = upper)
+        //> (0 = lower, 1 = upper)
             match bytes[0] & 0b00001000{
                 0 => Some(prev_char.to_string() + &word.to_lowercase()),
                 _ => Some(prev_char.to_string() + &word[0..1].to_uppercase() + &word[1..].to_lowercase()), 
             }
+        //<
     }
 
     pub fn decompress(compressed_bytes: &[u8], index_pairs: &[(HashMap<String, u32>, HashMap<u32, String>)]) -> Option<String>{
@@ -265,10 +282,10 @@ pub mod text_compressor{
             // if next three bytes are a compressed word
             if compressed_bytes[i] & 128 != 0{
 
-                // get encoding length
+                //> get encoding length
                     let encoding_length = (compressed_bytes[i] & 0b01100000) >> 5;
 
-                // decode encoded word
+                //<> decode encoded word
                     // println!("encoding_length: {} i: {}",encoding_length, i);
                     // println!("{}",decompressed_text);
                     let decoded = match encoding_length{
@@ -290,11 +307,12 @@ pub mod text_compressor{
                         _ => None,
                     };
 
-                // store decompressed text
+                //<> store decompressed text
                     match decoded{
                         Some(x) => decompressed_text += &x,
                         _ => return None,
                     }
+                //<
             }else{
                 decompressed_text.push(compressed_bytes[i] as char);
                 i += 1;
@@ -326,8 +344,9 @@ pub mod text_compressor{
     fn compress_1(token: &str, word_to_index: &HashMap<String, u32>, compressed_bytes: &mut Vec<u8>, last_was_plaintext: bool) -> Option<Vec<u8>>{
         if last_was_plaintext && compressed_bytes[compressed_bytes.len() - 1] as char == ' ' && word_to_index.contains_key(&token.to_string()){
             // remove previously encoded space
-            // it will be encoded in the compressed word
+            //> it will be encoded in the compressed word
                 compressed_bytes.pop();
+            //<
 
             let mut compressed_byte = (word_to_index[token] as u8) & 0b00011111;
             compressed_byte |= 0b10100000;
@@ -351,25 +370,28 @@ pub mod text_compressor{
             // bytes that store compressed word
             let mut word_bytes = vec![0, 0];
 
-            // encode and store word
+            //> encode and store word
                 let word_index = word_to_index[&token.to_lowercase()];
 
                 word_bytes[1] = word_index as u8;
                 word_bytes[0] = (word_index >> 8) as u8 & 0b00000111;
+            //<
 
             // store previous char
-            // (0 = ' ', 1 = '\n')
+            //> (0 = ' ', 1 = '\n')
                 if last_char == '\n'{
                     word_bytes[0] |= 0b00010000;
                 }
                 // erase previous char from encoding
                 compressed_bytes.pop();
+            //<
 
             // store first char case
-            // (0 = lower, 1 = upper)
+            //> (0 = lower, 1 = upper)
                 if token[0..1] == token[0..1].to_uppercase(){
                     word_bytes[0] |= 0b00001000;
                 }
+            //<
 
             // signals the start of a 2 byte compressed word
             word_bytes[0] |= 0b11000000;
@@ -393,45 +415,48 @@ pub mod text_compressor{
             // bytes that store compressed word
             let mut word_bytes = vec![0, 0, 0];
 
-            // encode and store word
+            //> encode and store word
                 let word_index = word_to_index[&token.to_lowercase()];
 
                 word_bytes[2] = word_index as u8;
                 word_bytes[1] = (word_index >> 8) as u8;
                 word_bytes[0] = (word_index >> 16) as u8 & 0b00000111;
+            //<
 
             // store previous char
-            // (0 = ' ', 1 = '\n')
+            //> (0 = ' ', 1 = '\n')
                 if last_char == '\n'{
                     word_bytes[0] |= 0b00010000;
                 }
                 // erase previous char from encoding
                 compressed_bytes.pop();
+            //<
 
             // store first char case
-            // (0 = lower, 1 = upper)
+            //> (0 = lower, 1 = upper)
                 if token[0..1] == token[0..1].to_uppercase(){
                     word_bytes[0] |= 0b00001000;
                 }
 
-            // signals the start of a 3 byte compressed word
+            //<> signals the start of a 3 byte compressed word
                 word_bytes[0] |= 0b11100000;
 
                 Some(word_bytes)
+            //<
         }else{
             None
         }
     }
 
     pub fn compress(text: &str, index_pairs: &[(HashMap<String, u32>, HashMap<u32, String>)]) -> Option<Vec<u8>>{
-        // crash if non ascii(< 127) character
+        //> crash if non ascii(< 127) character
             for char in text.chars() {
                 if char as u32 > 127 {
                     return None
                 }
             }
 
-        // split strings to tokens (seperator is any character that's not alphanumeric, or '\'')
+        //<> split strings to tokens (seperator is any character that's not alphanumeric, or '\'')
             let mut result = Vec::new();
             let mut last = 0;
             for (index, matched) in text.match_indices(|c: char| !(c.is_alphanumeric() || c == '\'')) {
@@ -447,12 +472,12 @@ pub mod text_compressor{
 
             let tokens = result;
 
-        // compress
+        //<> compress
             let mut compressed_bytes: Vec<u8> = Vec::new();
             let mut last_was_plaintext = false;
             for token in tokens {
 
-                // compress token if possible
+                //> compress token if possible
                     let mut word_bytes = compress_1(token, &index_pairs[1].0, &mut compressed_bytes, last_was_plaintext);
                     if word_bytes == None {
                         word_bytes = compress_2(token, &index_pairs[2].0, &mut compressed_bytes, last_was_plaintext);
@@ -463,6 +488,7 @@ pub mod text_compressor{
                     if word_bytes == None {
                         word_bytes = compress_beginning(token, &index_pairs[1].0, &mut compressed_bytes, last_was_plaintext);
                     }               
+                //<
 
                 match word_bytes {
                     Some(word_bytes) => {
@@ -481,6 +507,7 @@ pub mod text_compressor{
                     }
                 }
             }
+        //<
         Some(compressed_bytes)
     }
 }
